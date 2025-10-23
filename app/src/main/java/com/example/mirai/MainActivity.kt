@@ -12,6 +12,8 @@ import androidx.lifecycle.lifecycleScope
 import com.example.mirai.data.*
 import com.example.mirai.ui.theme.MIRAITheme
 import kotlinx.coroutines.launch
+import androidx.navigation.compose.rememberNavController
+import com.example.mirai.screens.AppNavGraph
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -24,6 +26,18 @@ class MainActivity : ComponentActivity() {
                 ) {
                     // Person 2 will replace this with NavGraph
                     // Placeholder for now
+
+                    //Crea el controlador de navegación
+                    val navController = rememberNavController()
+
+                    //Crea el gestor de almacenamiento JSON
+                    val storageManager = LocalStorageManager(this)
+
+                    //Llama al NavGraph que conecta todas las pantallas
+                    AppNavGraph(
+                        navController = navController,
+                        storageManager = storageManager
+                    )
                 }
             }
         }
