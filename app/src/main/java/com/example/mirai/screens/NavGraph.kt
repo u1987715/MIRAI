@@ -41,7 +41,9 @@ fun AppNavGraph(
                 onNavigateToCreate = {
                     navController.navigate("createEditEntry")
                 },
-                onNavigateToCalendar = { /* TODO */ },
+                onNavigateToCalendar = {
+                    navController.navigate("calendar")
+                },
                 onNavigateToSettings = { /* TODO */ }
             )
         }
@@ -53,7 +55,9 @@ fun AppNavGraph(
                 userName = "User",
                 onNavigateToDetail = { id -> navController.navigate("entryDetail/$id") },
                 onNavigateToCreate = { navController.navigate("createEditEntry") },
-                onNavigateToCalendar = { /* TODO */ },
+                onNavigateToCalendar = {
+                    navController.navigate("calendar")
+                },
                 onNavigateToSettings = { /* TODO */ }
             )
         }
@@ -75,7 +79,7 @@ fun AppNavGraph(
                 }
             )
         }
-        //pantalla de crear o editar una entrada
+        //pantalla de crear o editar una entrada con argumento
         composable("createEditEntry/{entryId}") { backStackEntry ->
             val entryId = backStackEntry.arguments?.getString("entryId")
             CreateEditEntryScreen(
@@ -84,8 +88,16 @@ fun AppNavGraph(
                 entryId = entryId
             )
         }
+        //sin argumento
         composable("createEditEntry") {
             CreateEditEntryScreen(
+                navController = navController,
+                storageManager = storageManager
+            )
+        }
+
+        composable("calendar") {
+            CalendarScreen(
                 navController = navController,
                 storageManager = storageManager
             )

@@ -23,6 +23,8 @@ import com.example.mirai.data.LocalStorageManager
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
+import androidx.navigation.NavGraph.Companion.findStartDestination
+
 
 /**
  * Pantalla para crear o editar una entrada del diario.
@@ -194,10 +196,14 @@ fun CreateEditEntryScreen(
                             try {
                                 storageManager.deleteEntry(entryId!!)
                                 Toast.makeText(ctx, "Entry deleted", Toast.LENGTH_SHORT).show()
-                                navController.navigate("home") {
-                                    popUpTo("home") { inclusive = true }
+                                navController.navigate(navController.graph.startDestinationRoute ?: "home") {
+                                    popUpTo(navController.graph.id) {
+                                        inclusive = true
+                                    }
                                     launchSingleTop = true
                                 }
+
+
 
                             } catch (e: Exception) {
                                 Toast.makeText(ctx, "Error deleting entry", Toast.LENGTH_SHORT).show()
