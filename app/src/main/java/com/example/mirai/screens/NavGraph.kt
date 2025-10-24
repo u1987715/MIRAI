@@ -13,7 +13,8 @@ import com.example.mirai.screens.*
 import kotlinx.coroutines.launch
 
 /**
- * NavGraph con soporte para tema dinámico
+ * NavGraph con soporte para tema dinámico CORREGIDO
+ * - Pasa isDarkTheme a TODAS las pantallas
  */
 @Composable
 fun NavGraph(
@@ -108,7 +109,7 @@ fun NavGraph(
         }
 
         // ============================================
-        // ENTRY DETAIL
+        // ENTRY DETAIL (✅ CORREGIDO - Pasa isDarkTheme)
         // ============================================
         composable(
             route = "entryDetail/{entryId}",
@@ -124,6 +125,7 @@ fun NavGraph(
                 navController = navController,
                 storageManager = storageManager,
                 entryId = entryId,
+                isDarkTheme = isDarkTheme, // ✅ AGREGADO
                 onEdit = { id ->
                     navController.navigate("createEditEntry/$id")
                 },
