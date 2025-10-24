@@ -16,27 +16,28 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.mirai.data.DiaryEntry
 import com.example.mirai.data.LocalStorageManager
+import com.example.mirai.ui.components.GradientBackground
+import com.example.mirai.ui.theme.*
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
-import androidx.compose.ui.platform.LocalContext
-
 
 /**
- * CalendarScreen.kt
- * Permite navegar por meses y ver entradas por fecha.
+ * CalendarScreen con soporte para Dark/Light Mode
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CalendarScreen(
     navController: NavController,
-    storageManager: LocalStorageManager
+    storageManager: LocalStorageManager,
+    isDarkTheme: Boolean = true
 ) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -48,181 +49,242 @@ fun CalendarScreen(
     val monthFormat = remember { SimpleDateFormat("MMMM yyyy", Locale.getDefault()) }
     val dayFormat = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()) }
 
-    // Cargar entradas cuando cambie la fecha seleccionada
-    LaunchedEffect(selectedDate) {
-        selectedDate?.let { date ->
-            scope.launch {
-                try {
-                    val all = storageManager.getAllEntries()
-                    val formatted = dayFormat.format(date)
-                    entriesForSelectedDay = all.filter {
-                        dayFormat.format(Date(it.createdAt)) == formatted
-                    }
-                } catch (e: Exception) {
-                    Toast.makeText(ctx, "Error loading entries", Toast.LENGTH_SHORT).show()
-                }
-            }
-        }
+    // Colores según el tema
+    val primaryColor = if (isDarkTheme) MiraiPink else MiraiTeal
+    val secondaryColor = if (isDarkTheme) MiraiPurple else MiraiGreen
+    val textColor = if (isDarkTheme) Color.White else MiraiTextDark
+    val cardColor = if (isDarkTheme) {
+        Color(0xFF2D1B3D).copy(alpha = 0.6f)
+    } else {
+        Color(0xFFE8F5EE).copy(alpha = 0.8f)
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Calendar") },
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
-                    }
-                }
-            )
-        }
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            //Encabezado con mes y flechas
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = {
-                    val newMonth = (currentMonth.clone() as Calendar).apply {
-                        add(Calendar.MONTH, -1)
-                    }
-                    currentMonth = newMonth
-                }) {
-                    Icon(Icons.Default.KeyboardArrowLeft, contentDescription = "Previous month")
-                }
-
-                Text(
-                    text = monthFormat.format(currentMonth.time).replaceFirstChar { it.uppercase() },
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
-
-                IconButton(onClick = {
-                    val newMonth = (currentMonth.clone() as Calendar).apply {
-                        add(Calendar.MONTH, 1)
-                    }
-                    currentMonth = newMonth
-                }) {
-                    Icon(Icons.Default.KeyboardArrowRight, contentDescription = "Next month")
-                }
-            }
-
-            Spacer(Modifier.height(8.dp))
-
-            //Días de la semana
-            val weekDays = listOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                weekDays.forEach { day ->
-                    Text(
-                        text = day,
-                        modifier = Modifier.weight(1f),
-                        textAlign = TextAlign.Center,
-                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold)
+    // Fondo con degradado según tema
+    GradientBackground(darkTheme = isDarkTheme) {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Text(
+                            "Calendar",
+                            color = textColor,
+                            fontWeight = FontWeight.Bold
+                        )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = { navController.popBackStack() }) {
+                            Icon(
+                                Icons.Default.ArrowBack,
+                                contentDescription = "Back",
+                                tint = primaryColor
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent
                     )
+                )
+            },
+            containerColor = Color.Transparent
+        ) { innerPadding ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Header del mes con navegación
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = {
+                        currentMonth = (currentMonth.clone() as Calendar).apply {
+                            add(Calendar.MONTH, -1)
+                        }
+                    }) {
+                        Icon(
+                            Icons.Default.KeyboardArrowLeft,
+                            contentDescription = "Previous month",
+                            tint = primaryColor
+                        )
+                    }
+
+                    Text(
+                        text = monthFormat.format(currentMonth.time),
+                        style = MaterialTheme.typography.titleLarge,
+                        color = textColor,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    IconButton(onClick = {
+                        currentMonth = (currentMonth.clone() as Calendar).apply {
+                            add(Calendar.MONTH, 1)
+                        }
+                    }) {
+                        Icon(
+                            Icons.Default.KeyboardArrowRight,
+                            contentDescription = "Next month",
+                            tint = primaryColor
+                        )
+                    }
                 }
-            }
 
-            Spacer(Modifier.height(8.dp))
-
-            //Cuadrícula de días
-            val daysInMonth = currentMonth.getActualMaximum(Calendar.DAY_OF_MONTH)
-            val firstDayOfWeek = currentMonth.apply { set(Calendar.DAY_OF_MONTH, 1) }
-                .get(Calendar.DAY_OF_WEEK) - 1
-
-            val totalCells = firstDayOfWeek + daysInMonth
-            val totalRows = (totalCells + 6) / 7
-
-            Column {
-                for (row in 0 until totalRows) {
-                    Row(
-                        Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                // Grid del calendario
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = cardColor
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
                     ) {
-                        for (col in 0..6) {
-                            val dayIndex = row * 7 + col
-                            val dayNumber = dayIndex - firstDayOfWeek + 1
-                            if (dayNumber in 1..daysInMonth) {
-                                val calendarDay = Calendar.getInstance().apply {
-                                    time = currentMonth.time
-                                    set(Calendar.DAY_OF_MONTH, dayNumber)
+                        // Días de la semana
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly
+                        ) {
+                            listOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat").forEach { day ->
+                                Text(
+                                    text = day,
+                                    modifier = Modifier.weight(1f),
+                                    textAlign = TextAlign.Center,
+                                    color = secondaryColor,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+
+                        Spacer(Modifier.height(8.dp))
+
+                        // Días del mes
+                        val cal = currentMonth.clone() as Calendar
+                        cal.set(Calendar.DAY_OF_MONTH, 1)
+                        val firstDayOfWeek = cal.get(Calendar.DAY_OF_WEEK) - 1
+                        val daysInMonth = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
+
+                        val weeks = (firstDayOfWeek + daysInMonth + 6) / 7
+
+                        for (week in 0 until weeks) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceEvenly
+                            ) {
+                                for (dayOfWeek in 0..6) {
+                                    val dayIndex = week * 7 + dayOfWeek - firstDayOfWeek + 1
+                                    if (dayIndex in 1..daysInMonth) {
+                                        val dayDate = (currentMonth.clone() as Calendar).apply {
+                                            set(Calendar.DAY_OF_MONTH, dayIndex)
+                                        }.time
+
+                                        val isSelected = selectedDate?.let {
+                                            dayFormat.format(it) == dayFormat.format(dayDate)
+                                        } ?: false
+
+                                        Box(
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .aspectRatio(1f)
+                                                .padding(4.dp)
+                                                .background(
+                                                    color = if (isSelected) primaryColor else Color.Transparent,
+                                                    shape = CircleShape
+                                                )
+                                                .clickable {
+                                                    selectedDate = dayDate
+                                                    scope.launch {
+                                                        try {
+                                                            val allEntries = storageManager.getAllEntries()
+                                                            entriesForSelectedDay = allEntries.filter {
+                                                                dayFormat.format(Date(it.createdAt)) ==
+                                                                        dayFormat.format(dayDate)
+                                                            }
+                                                        } catch (e: Exception) {
+                                                            Toast
+                                                                .makeText(
+                                                                    ctx,
+                                                                    "Error loading entries",
+                                                                    Toast.LENGTH_SHORT
+                                                                )
+                                                                .show()
+                                                        }
+                                                    }
+                                                },
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(
+                                                text = dayIndex.toString(),
+                                                color = if (isSelected) Color.White else textColor,
+                                                style = MaterialTheme.typography.bodyMedium
+                                            )
+                                        }
+                                    } else {
+                                        Spacer(modifier = Modifier.weight(1f))
+                                    }
                                 }
-                                val date = calendarDay.time
-                                val formatted = dayFormat.format(date)
+                            }
+                        }
+                    }
+                }
 
-                                // ¿Tiene entradas este día?
-                                var hasEntries by remember(currentMonth) { mutableStateOf(false) }
+                // Lista de entradas del día seleccionado
+                if (selectedDate != null) {
+                    Spacer(Modifier.height(8.dp))
 
-                                LaunchedEffect(currentMonth) {
-                                    scope.launch {
-                                        val all = storageManager.getAllEntries()
-                                        hasEntries = all.any {
-                                            dayFormat.format(Date(it.createdAt)) == formatted
+                    Text(
+                        text = "Entries for ${dayFormat.format(selectedDate!!)}",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = primaryColor,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    if (entriesForSelectedDay.isEmpty()) {
+                        Text(
+                            text = "No entries for this day.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = textColor.copy(alpha = 0.7f)
+                        )
+                    } else {
+                        LazyColumn(
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(entriesForSelectedDay) { entry ->
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            navController.navigate("entryDetail/${entry.id}")
+                                        },
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = cardColor
+                                    )
+                                ) {
+                                    Column(modifier = Modifier.padding(12.dp)) {
+                                        Text(
+                                            text = entry.title.ifBlank { "(Untitled)" },
+                                            style = MaterialTheme.typography.titleSmall,
+                                            color = textColor,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        if (entry.content.isNotBlank()) {
+                                            Spacer(Modifier.height(4.dp))
+                                            Text(
+                                                text = entry.content.take(100),
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = textColor.copy(alpha = 0.8f),
+                                                maxLines = 2
+                                            )
                                         }
                                     }
                                 }
-
-
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .aspectRatio(1f)
-                                        .clickable { selectedDate = date },
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(text = dayNumber.toString())
-                                    if (hasEntries) {
-                                        Box(
-                                            modifier = Modifier
-                                                .align(Alignment.BottomCenter)
-                                                .padding(bottom = 4.dp)
-                                                .size(6.dp)
-                                                .background(
-                                                    color = MaterialTheme.colorScheme.primary,
-                                                    shape = CircleShape
-                                                )
-                                        )
-                                    }
-                                }
-                            } else {
-                                Spacer(Modifier.weight(1f))
-                            }
-                        }
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(16.dp))
-
-            //Lista de entradas del día seleccionado
-            if (selectedDate != null) {
-                Text(
-                    text = "Entries for ${dayFormat.format(selectedDate!!)}",
-                    style = MaterialTheme.typography.titleMedium
-                )
-                Spacer(Modifier.height(8.dp))
-                if (entriesForSelectedDay.isEmpty()) {
-                    Text("No entries for this day.")
-                } else {
-                    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        items(entriesForSelectedDay) { entry ->
-                            DiaryEntryCard(entry = entry) {
-                                navController.navigate("entryDetail/${entry.id}")
                             }
                         }
                     }
                 }
             }
         }
-    }
-}
+    }}

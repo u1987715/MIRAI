@@ -1,40 +1,74 @@
-package com.example.mirai.screens
+package com.example.mirai.navigation
 
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.navArgument
 import com.example.mirai.data.LocalStorageManager
+import com.example.mirai.screens.*
+import kotlinx.coroutines.launch
 
 /**
- * Define todas las pantallas navegables de la app MIRAI.
- * Controla las rutas Welcome → Home (y otras futuras).
+ * NavGraph con soporte para tema dinámico
  */
 @Composable
-fun AppNavGraph(
+fun NavGraph(
     navController: NavHostController,
-    storageManager: LocalStorageManager
+    storageManager: LocalStorageManager,
+    startDestination: String = "welcome",
+    isDarkTheme: Boolean = true,
+    onThemeChange: (Boolean) -> Unit = {},
+    modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
+    // Cargar preferencias
+    var userPreferences by remember { mutableStateOf<com.example.mirai.data.UserPreferences?>(null) }
+
+    LaunchedEffect(Unit) {
+        scope.launch {
+            try {
+                userPreferences = storageManager.getPreferences()
+            } catch (e: Exception) {
+                userPreferences = com.example.mirai.data.UserPreferences()
+            }
+        }
+    }
+
     NavHost(
         navController = navController,
-        startDestination = "welcome"  // pantalla inicial
+        startDestination = startDestination,
+        modifier = modifier
     ) {
-        // Pantalla de bienvenida
-        composable("welcome") {
+        // ============================================
+        // WELCOME SCREEN
+        // ============================================
+        composable(route = "welcome") {
             WelcomeScreen(
                 navController = navController,
                 storageManager = storageManager,
-                homeRoute = "home"
+                homeRoute = "home",
+                isDarkTheme = isDarkTheme
             )
         }
 
-        // Pantalla principal (Home) con argumento
-        composable("home/{userName}") { backStackEntry ->
+        // ============================================
+        // HOME SCREEN
+        // ============================================
+
+        // Con userName
+        composable(route = "home/{userName}") { backStackEntry ->
             val userName = backStackEntry.arguments?.getString("userName") ?: "User"
             HomeScreen(
                 navController = navController,
                 storageManager = storageManager,
                 userName = userName,
+                isDarkTheme = isDarkTheme,
                 onNavigateToDetail = { entryId ->
                     navController.navigate("entryDetail/$entryId")
                 },
@@ -44,28 +78,46 @@ fun AppNavGraph(
                 onNavigateToCalendar = {
                     navController.navigate("calendar")
                 },
-                onNavigateToSettings = { navController.navigate("settings") }
-
+                onNavigateToSettings = {
+                    navController.navigate("settings")
+                }
             )
         }
-        // home sin argumentos
-        composable("home") {
+
+        // Sin userName (fallback)
+        composable(route = "home") {
+            val userName = userPreferences?.userName ?: "User"
             HomeScreen(
                 navController = navController,
                 storageManager = storageManager,
-                userName = "User",
-                onNavigateToDetail = { id -> navController.navigate("entryDetail/$id") },
-                onNavigateToCreate = { navController.navigate("createEditEntry") },
+                userName = userName,
+                isDarkTheme = isDarkTheme,
+                onNavigateToDetail = { entryId ->
+                    navController.navigate("entryDetail/$entryId")
+                },
+                onNavigateToCreate = {
+                    navController.navigate("createEditEntry")
+                },
                 onNavigateToCalendar = {
                     navController.navigate("calendar")
                 },
-                onNavigateToSettings = { navController.navigate("settings") }
-
+                onNavigateToSettings = {
+                    navController.navigate("settings")
+                }
             )
         }
 
-        //pantalla de visualización de entrada
-        composable("entryDetail/{entryId}") { backStackEntry ->
+        // ============================================
+        // ENTRY DETAIL
+        // ============================================
+        composable(
+            route = "entryDetail/{entryId}",
+            arguments = listOf(
+                navArgument("entryId") {
+                    type = NavType.StringType
+                }
+            )
+        ) { backStackEntry ->
             val entryId = backStackEntry.arguments?.getString("entryId") ?: return@composable
 
             EntryDetailScreen(
@@ -73,49 +125,70 @@ fun AppNavGraph(
                 storageManager = storageManager,
                 entryId = entryId,
                 onEdit = { id ->
-                    // más adelante navegarás a la pantalla de edición
-                    // navController.navigate("editEntry/$id")
+                    navController.navigate("createEditEntry/$id")
                 },
                 onDeleteSuccess = {
-                    navController.popBackStack("home", inclusive = false)
+                    navController.navigate("home") {
+                        popUpTo("home") { inclusive = true }
+                        launchSingleTop = true
+                    }
                 }
             )
         }
-        //pantalla de crear o editar una entrada con argumento
-        composable("createEditEntry/{entryId}") { backStackEntry ->
+
+        // ============================================
+        // CREATE/EDIT ENTRY
+        // ============================================
+
+        // Con entryId (editar)
+        composable(
+            route = "createEditEntry/{entryId}",
+            arguments = listOf(
+                navArgument("entryId") {
+                    type = NavType.StringType
+                }
+            )
+        ) { backStackEntry ->
             val entryId = backStackEntry.arguments?.getString("entryId")
             CreateEditEntryScreen(
                 navController = navController,
                 storageManager = storageManager,
-                entryId = entryId
+                entryId = entryId,
+                isDarkTheme = isDarkTheme
             )
         }
-        //sin argumento
-        composable("createEditEntry") {
+
+        // Sin entryId (crear)
+        composable(route = "createEditEntry") {
             CreateEditEntryScreen(
                 navController = navController,
-                storageManager = storageManager
+                storageManager = storageManager,
+                entryId = null,
+                isDarkTheme = isDarkTheme
             )
         }
-        // pantalla calendario
-        composable("calendar") {
+
+        // ============================================
+        // CALENDAR
+        // ============================================
+        composable(route = "calendar") {
             CalendarScreen(
                 navController = navController,
-                storageManager = storageManager
+                storageManager = storageManager,
+                isDarkTheme = isDarkTheme
             )
         }
-        //pantalla ajustes
-        composable("settings") {
+
+        // ============================================
+        // SETTINGS (con theme toggle)
+        // ============================================
+        composable(route = "settings") {
             SettingsScreen(
                 navController = navController,
-                storageManager = storageManager
+                storageManager = storageManager,
+                isDarkTheme = isDarkTheme,
+                onThemeChange = onThemeChange
             )
         }
-
-
-
-
-
-
     }
 }

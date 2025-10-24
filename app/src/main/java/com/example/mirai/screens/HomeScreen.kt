@@ -12,48 +12,48 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
 import com.example.mirai.data.DiaryEntry
 import com.example.mirai.data.LocalStorageManager
+import com.example.mirai.ui.components.GradientBackground
+import com.example.mirai.ui.theme.*
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
 /**
- * HomeScreen.kt
- * Pantalla principal del diario MIRAI
- *
- * - Muestra todas las entradas guardadas
- * - Permite crear nuevas (botón +)
- * - Permite navegar a Configuración y Calendario
- * - Si no hay entradas, muestra un mensaje vacío
- * - Al hacer clic en una entrada, navega al detalle
+ * HomeScreen con soporte para Dark/Light Mode
  */
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     navController: NavController,
     storageManager: LocalStorageManager,
-    userName: String,                       // Nombre guardado en preferencias
-    onNavigateToDetail: (String) -> Unit,   // Ir al detalle de una entrada
-    onNavigateToCreate: () -> Unit,         // Crear nueva entrada
-    onNavigateToCalendar: () -> Unit,       // Abrir calendario
-    onNavigateToSettings: () -> Unit        // Abrir ajustes
+    userName: String,
+    isDarkTheme: Boolean = true,
+    onNavigateToDetail: (String) -> Unit,
+    onNavigateToCreate: () -> Unit,
+    onNavigateToCalendar: () -> Unit,
+    onNavigateToSettings: () -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    // Estado: lista de entradas y control de carga
     var entries by remember { mutableStateOf<List<DiaryEntry>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
 
-    // Cargar las entradas al entrar en la pantalla
+    // Colores según el tema
+    val primaryColor = if (isDarkTheme) MiraiPink else MiraiTeal
+    val secondaryColor = if (isDarkTheme) MiraiPurple else MiraiGreen
+    val textColor = if (isDarkTheme) Color.White else MiraiTextDark
+
+    // Cargar entradas
     LaunchedEffect(Unit) {
         try {
             val loadedEntries = storageManager.getAllEntries()
@@ -65,53 +65,108 @@ fun HomeScreen(
         }
     }
 
-    // Diseño general con barra superior y botón flotante
-    Scaffold(
-        topBar = {
-            HomeTopBar(
-                userName = userName,
-                onSettingsClick = onNavigateToSettings,
-                onCalendarClick = onNavigateToCalendar
-            )
-        },
-        floatingActionButton = {
-            FloatingActionButton(onClick = onNavigateToCreate) {
-                Icon(Icons.Default.Add, contentDescription = "Add Entry")
-            }
-        }
-    ) { innerPadding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-        ) {
-            when {
-                loading -> {
-                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                }
-                error != null -> {
-                    Text(
-                        text = error ?: "",
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.align(Alignment.Center)
+    // Fondo con degradado según tema
+    GradientBackground(darkTheme = isDarkTheme) {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Text(
+                            text = "Hello, $userName!",
+                            style = MaterialTheme.typography.titleLarge.copy(
+                                fontWeight = FontWeight.Bold
+                            ),
+                            color = textColor
+                        )
+                    },
+                    actions = {
+                        IconButton(onClick = onNavigateToCalendar) {
+                            Icon(
+                                Icons.Default.CalendarToday,
+                                contentDescription = "Calendar",
+                                tint = primaryColor
+                            )
+                        }
+                        IconButton(onClick = onNavigateToSettings) {
+                            Icon(
+                                Icons.Default.Settings,
+                                contentDescription = "Settings",
+                                tint = secondaryColor
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent
                     )
+                )
+            },
+            floatingActionButton = {
+                FloatingActionButton(
+                    onClick = onNavigateToCreate,
+                    containerColor = primaryColor,
+                    contentColor = Color.White
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Add Entry")
                 }
-                entries.isEmpty() -> {
-                    Text(
-                        text = "No entries yet. Tap + to start writing!",
-                        style = MaterialTheme.typography.bodyLarge,
-                        modifier = Modifier.align(Alignment.Center)
-                    )
-                }
-                else -> {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        items(entries) { entry ->
-                            DiaryEntryCard(entry = entry) {
-                                onNavigateToDetail(entry.id)
+            },
+            containerColor = Color.Transparent
+        ) { innerPadding ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+            ) {
+                when {
+                    loading -> {
+                        CircularProgressIndicator(
+                            modifier = Modifier.align(Alignment.Center),
+                            color = primaryColor
+                        )
+                    }
+                    error != null -> {
+                        Text(
+                            text = error ?: "",
+                            color = primaryColor,
+                            modifier = Modifier.align(Alignment.Center)
+                        )
+                    }
+                    entries.isEmpty() -> {
+                        Column(
+                            modifier = Modifier.align(Alignment.Center),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            Text(
+                                text = "📖",
+                                style = MaterialTheme.typography.displayLarge
+                            )
+                            Text(
+                                text = "No entries yet",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = textColor.copy(alpha = 0.9f)
+                            )
+                            Text(
+                                text = "Tap + to start writing!",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = secondaryColor.copy(alpha = 0.8f)
+                            )
+                        }
+                    }
+                    else -> {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            items(entries) { entry ->
+                                DiaryEntryCard(
+                                    entry = entry,
+                                    isDarkTheme = isDarkTheme,
+                                    primaryColor = primaryColor,
+                                    textColor = textColor
+                                ) {
+                                    onNavigateToDetail(entry.id)
+                                }
                             }
                         }
                     }
@@ -122,50 +177,44 @@ fun HomeScreen(
 }
 
 /**
- * Barra superior con saludo y botones de navegación
+ * Card de entrada adaptada al tema
  */
 @Composable
-fun HomeTopBar(
-    userName: String,
-    onSettingsClick: () -> Unit,
-    onCalendarClick: () -> Unit
+fun DiaryEntryCard(
+    entry: DiaryEntry,
+    isDarkTheme: Boolean,
+    primaryColor: Color,
+    textColor: Color,
+    onClick: () -> Unit
 ) {
-    @OptIn(ExperimentalMaterial3Api::class)
-    TopAppBar(
-        title = {
-            Text(
-                text = "Hello, $userName!",
-                style = MaterialTheme.typography.titleLarge
-            )
-        },
-        actions = {
-            IconButton(onClick = onCalendarClick) {
-                Icon(Icons.Default.CalendarToday, contentDescription = "Calendar")
-            }
-            IconButton(onClick = onSettingsClick) {
-                Icon(Icons.Default.Settings, contentDescription = "Settings")
-            }
-        }
-    )
-}
-
-/**
- * Tarjeta de una entrada individual
- */
-@Composable
-fun DiaryEntryCard(entry: DiaryEntry, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() },
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        colors = CardDefaults.cardColors(
+            containerColor = if (isDarkTheme) {
+                Color(0xFF2D1B3D).copy(alpha = 0.6f)  // Púrpura oscuro
+            } else {
+                Color(0xFFE8F5EE).copy(alpha = 0.8f)  // Verde muy claro
+            }
+        ),
+        shape = MaterialTheme.shapes.medium
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
+            // Título
             Text(
                 text = entry.title.ifBlank { "(Untitled)" },
-                style = MaterialTheme.typography.titleMedium
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontWeight = FontWeight.Bold
+                ),
+                color = textColor,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
 
+            Spacer(Modifier.height(4.dp))
+
+            // Fecha
             val formattedDate = remember(entry.createdAt) {
                 SimpleDateFormat("MMM dd, yyyy 'at' h:mm a", Locale.getDefault())
                     .format(Date(entry.createdAt))
@@ -174,68 +223,19 @@ fun DiaryEntryCard(entry: DiaryEntry, onClick: () -> Unit) {
             Text(
                 text = formattedDate,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = primaryColor.copy(alpha = 0.7f)
             )
 
             Spacer(Modifier.height(8.dp))
 
+            // Contenido preview
             Text(
                 text = entry.content,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
-                style = MaterialTheme.typography.bodyMedium
+                style = MaterialTheme.typography.bodyMedium,
+                color = textColor.copy(alpha = 0.8f)
             )
-        }
-    }
-}
-
-/**
- * Preview con datos simulados
- */
-@Preview(showBackground = true)
-@Composable
-fun PreviewHomeScreen() {
-    val fakeNavController = rememberNavController()
-    val fakeStorage = LocalStorageManager(LocalContext.current)
-    val sampleEntries = listOf(
-        DiaryEntry(
-            id = "1",
-            title = "Día productivo",
-            content = "Hoy avancé mucho con el proyecto MIRAI...",
-            createdAt = System.currentTimeMillis()
-        ),
-        DiaryEntry(
-            id = "2",
-            title = "Reflexión nocturna",
-            content = "He aprendido bastante sobre Compose y Kotlin...",
-            createdAt = System.currentTimeMillis() - 86400000
-        )
-    )
-
-    Scaffold(
-        topBar = {
-            HomeTopBar(
-                userName = "Fede",
-                onSettingsClick = {},
-                onCalendarClick = {}
-            )
-        },
-        floatingActionButton = {
-            FloatingActionButton(onClick = {}) {
-                Icon(Icons.Default.Add, contentDescription = "Add Entry")
-            }
-        }
-    ) { innerPadding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            items(sampleEntries) { entry ->
-                DiaryEntryCard(entry = entry, onClick = {})
-            }
         }
     }
 }

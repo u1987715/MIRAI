@@ -1,6 +1,7 @@
 package com.example.mirai.screens
 
 import android.widget.Toast
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -8,174 +9,287 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.example.mirai.R
 import com.example.mirai.data.LocalStorageManager
 import com.example.mirai.data.UserPreferences
+import com.example.mirai.ui.components.GradientBackground
+import com.example.mirai.ui.theme.*
 import kotlinx.coroutines.launch
-import androidx.navigation.compose.rememberNavController
-import androidx.compose.ui.tooling.preview.Preview
 
 /**
- * Pantalla de bienvenida dinámica:
- * - Si hay userName guardado -> "Welcome, userName" + botón Start
- * - Si no hay userName -> TextField + botón Start
- *
- * Navega a la pantalla Home al pulsar Start.
- *
- * Requisitos cubiertos:
- * - Persistencia local (JSON) mediante LocalStorageManager (getPreferences/savePreferences)
- * - Manejo de errores con try/catch
- * - Diseño responsive con BoxWithConstraints
- * - Material 3
+ * WelcomeScreen con soporte para Dark/Light Mode
+ * - Dark Mode: Logo rosa-púrpura + degradado oscuro
+ * - Light Mode: Logo verde-turquesa + degradado claro
  */
 @Composable
 fun WelcomeScreen(
     navController: NavController,
     storageManager: LocalStorageManager,
-    // ruta de navegación a Home (ajústala a vuestro grafo)
-    homeRoute: String = "home"
+    homeRoute: String = "home",
+    isDarkTheme: Boolean = true
 ) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
 
     var loading by remember { mutableStateOf(true) }
-    var currentPrefs by remember { mutableStateOf(UserPreferences()) } // userName, theme, fontSize, etc.
-    var nameInput by remember { mutableStateOf("") }                    // para el TextField cuando no hay nombre
+    var currentPrefs by remember { mutableStateOf(UserPreferences()) }
+    var nameInput by remember { mutableStateOf("") }
 
-    // Cargar preferencias al abrir la pantalla
+    // Cargar preferencias
     LaunchedEffect(Unit) {
         try {
-            currentPrefs = storageManager.getPreferences() // lee preferences.json
-            nameInput = currentPrefs.userName              // si viene vacío, el TextField aparece
+            currentPrefs = storageManager.getPreferences()
+            nameInput = currentPrefs.userName
         } catch (e: Exception) {
-            // Si hay error, seguimos con defaults
             Toast.makeText(ctx, "Error cargando preferencias", Toast.LENGTH_SHORT).show()
         } finally {
             loading = false
         }
     }
 
+    // Colores según el tema
+    val primaryColor = if (isDarkTheme) MiraiPink else MiraiTeal
+    val secondaryColor = if (isDarkTheme) MiraiPurple else MiraiGreen
+    val textColor = if (isDarkTheme) Color.White else MiraiTextDark
+
     if (loading) {
-        // Estado de carga simple
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
+        GradientBackground(darkTheme = isDarkTheme) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = primaryColor)
+            }
         }
         return
     }
 
-    BoxWithConstraints(
-        modifier = Modifier.fillMaxSize()
-    ) {
-        val padding = if (maxWidth > 600.dp) 32.dp else 16.dp
-        val verticalSpace = if (maxHeight > 700.dp) 24.dp else 12.dp
-
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
+    // Fondo con degradado (dark o light)
+    GradientBackground(darkTheme = isDarkTheme) {
+        BoxWithConstraints(
+            modifier = Modifier.fillMaxSize()
         ) {
+            val padding = if (maxWidth > 600.dp) 32.dp else 24.dp
+            val verticalSpace = if (maxHeight > 700.dp) 24.dp else 16.dp
 
-            // Logo / ilustración (placeholder)
-            Text(
-                text = "MIRAI",
-                style = MaterialTheme.typography.headlineLarge
-            )
-
-            Spacer(Modifier.height(verticalSpace))
-
-            // ¿Hay nombre guardado?
-            val hasName = currentPrefs.userName.isNotBlank()
-
-            if (hasName) {
-                // Mensaje de bienvenida directa
-                Text(
-                    text = "Welcome, ${currentPrefs.userName}",
-                    style = MaterialTheme.typography.titleLarge
-                )
-            } else {
-                // Pedir nombre por primera vez
-                Text(
-                    text = "Welcome to Mirai!\nWhat's your name?",
-                    style = MaterialTheme.typography.titleMedium
-                )
-
-                Spacer(Modifier.height(12.dp))
-
-                OutlinedTextField(
-                    value = nameInput,
-                    onValueChange = { nameInput = it },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(0.9f),
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                    keyboardActions = KeyboardActions(
-                        onDone = {
-                            // Pulsar “Done” del teclado actúa como Start
-                            scope.launch { onStart(nameInput, currentPrefs, storageManager, navController, ctx, homeRoute) }
-                        }
-                    ),
-                    placeholder = { Text("Escribe tu nombre") }
-                )
-            }
-
-            Spacer(Modifier.height(verticalSpace))
-
-            // Botón principal "Start"
-            Button(
-                onClick = {
-                    scope.launch {
-                        val nameToUse = if (hasName) currentPrefs.userName else nameInput
-                        onStart(nameToUse, currentPrefs, storageManager, navController, ctx, homeRoute)
-                    }
-                },
-                enabled = hasName || nameInput.isNotBlank()
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text("Start")
-            }
+                // ========================================
+                // LOGO - Cambia según el tema
+                // ========================================
+                Box(
+                    modifier = Modifier.size(140.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Image(
+                        painter = painterResource(
+                            id = if (isDarkTheme) {
+                                // Dark Mode → Logo Rosa
+                                try {
+                                    R.drawable.mirai_logo_color  // MIRAIROSA.png
+                                } catch (e: Exception) {
+                                    R.drawable.mirai_logo
+                                }
+                            } else {
+                                // Light Mode → Logo Verde
+                                try {
+                                    R.drawable.mirai_logo_light  // MIRAIVERDE.png
+                                } catch (e: Exception) {
+                                    R.drawable.mirai_logo
+                                }
+                            }
+                        ),
+                        contentDescription = "MIRAI Logo",
+                        modifier = Modifier.size(140.dp),
+                        contentScale = ContentScale.Fit
+                    )
+                }
 
-            // Botón secundario "Change user" solo si ya hay nombre
-            if (hasName) {
-                Spacer(Modifier.height(8.dp))
-                TextButton(
-                    onClick = {
-                        // Limpiar el nombre para que vuelva a pedirlo
-                        currentPrefs = currentPrefs.copy(userName = "")
-                        nameInput = ""
+                Spacer(Modifier.height(verticalSpace * 2))
+
+                // Título MIRAI
+                Text(
+                    text = "MIRAI",
+                    style = MaterialTheme.typography.displayLarge.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 48.sp
+                    ),
+                    color = textColor,
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(Modifier.height(verticalSpace))
+
+                val hasName = currentPrefs.userName.isNotBlank()
+
+                if (hasName) {
+                    // ========================================
+                    // USUARIO EXISTENTE
+                    // ========================================
+                    Text(
+                        text = "Welcome, ${currentPrefs.userName}",
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontSize = 24.sp
+                        ),
+                        color = textColor,
+                        textAlign = TextAlign.Center
+                    )
+
+                    Spacer(Modifier.height(verticalSpace * 3))
+
+                    // Botón Start
+                    Button(
+                        onClick = {
+                            scope.launch {
+                                navController.navigate("home/${currentPrefs.userName}") {
+                                    popUpTo(navController.graph.startDestinationId) {
+                                        inclusive = true
+                                    }
+                                    launchSingleTop = true
+                                }
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = primaryColor,
+                            contentColor = Color.White
+                        ),
+                        shape = MaterialTheme.shapes.medium
+                    ) {
+                        Text(
+                            text = "Start",
+                            style = MaterialTheme.typography.labelLarge.copy(
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 18.sp
+                            )
+                        )
                     }
-                ) { Text("Change user") }
+
+                    Spacer(Modifier.height(verticalSpace))
+
+                    // Botón Change user
+                    TextButton(
+                        onClick = {
+                            currentPrefs = currentPrefs.copy(userName = "")
+                            nameInput = ""
+                        }
+                    ) {
+                        Text(
+                            "Change user",
+                            color = secondaryColor.copy(alpha = 0.8f),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+
+                } else {
+                    // ========================================
+                    // NUEVO USUARIO
+                    // ========================================
+                    Text(
+                        text = "What's your name?",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = primaryColor.copy(alpha = 0.9f),
+                        textAlign = TextAlign.Center
+                    )
+
+                    Spacer(Modifier.height(verticalSpace * 2))
+
+                    // Campo de texto
+                    OutlinedTextField(
+                        value = nameInput,
+                        onValueChange = { nameInput = it },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = {
+                            Text(
+                                "Enter your name",
+                                color = textColor.copy(alpha = 0.5f)
+                            )
+                        },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = primaryColor,
+                            unfocusedBorderColor = secondaryColor.copy(alpha = 0.5f),
+                            focusedTextColor = textColor,
+                            unfocusedTextColor = textColor,
+                            cursorColor = primaryColor
+                        ),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                        keyboardActions = KeyboardActions(
+                            onDone = {
+                                if (nameInput.isNotBlank()) {
+                                    scope.launch {
+                                        onStart(
+                                            nameInput,
+                                            currentPrefs,
+                                            storageManager,
+                                            navController,
+                                            ctx,
+                                            homeRoute
+                                        )
+                                    }
+                                }
+                            }
+                        )
+                    )
+
+                    Spacer(Modifier.height(verticalSpace * 2))
+
+                    // Botón Start
+                    Button(
+                        onClick = {
+                            scope.launch {
+                                onStart(
+                                    nameInput,
+                                    currentPrefs,
+                                    storageManager,
+                                    navController,
+                                    ctx,
+                                    homeRoute
+                                )
+                            }
+                        },
+                        enabled = nameInput.isNotBlank(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = primaryColor,
+                            contentColor = Color.White,
+                            disabledContainerColor = secondaryColor.copy(alpha = 0.3f),
+                            disabledContentColor = Color.White.copy(alpha = 0.5f)
+                        ),
+                        shape = MaterialTheme.shapes.medium
+                    ) {
+                        Text(
+                            text = "Start",
+                            style = MaterialTheme.typography.labelLarge.copy(
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 18.sp
+                            )
+                        )
+                    }
+                }
             }
         }
     }
 }
 
-@Preview(showBackground = true)
-@Composable
-fun PreviewWelcomeScreen() {
-    // Usa un LocalStorageManager “falso” solo para previsualizar
-    val fakeStorage = LocalStorageManager(LocalContext.current)
-
-    // No necesitamos NavController real, se puede usar uno vacío
-    val fakeNavController = rememberNavController()
-
-    WelcomeScreen(
-        navController = fakeNavController,
-        storageManager = fakeStorage
-    )
-}
-
-
 /**
- * Lógica de “Start”:
- * - Valida nombre
- * - Guarda preferencias actualizando userName
- * - Navega a Home
- *
- * Guardamos el nombre usando UserPreferences + LocalStorageManager.savePreferences(),
- * ya que no existe un métod saveUserName() independiente.
+ * Función helper para iniciar sesión
  */
 private suspend fun onStart(
     name: String,
@@ -191,12 +305,13 @@ private suspend fun onStart(
     }
 
     try {
-        // Persistimos nombre en preferences.json
         val updated = currentPrefs.copy(userName = name)
         storageManager.savePreferences(updated)
-        // Navegar a Home
+
         navController.navigate("home/${name}") {
-            popUpTo(navController.graph.startDestinationId) { inclusive = true }
+            popUpTo(navController.graph.startDestinationId) {
+                inclusive = true
+            }
             launchSingleTop = true
         }
     } catch (e: Exception) {

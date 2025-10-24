@@ -4,28 +4,36 @@ import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.mirai.data.LocalStorageManager
 import com.example.mirai.data.UserPreferences
+import com.example.mirai.ui.components.GradientBackground
+import com.example.mirai.ui.theme.*
 import kotlinx.coroutines.launch
-import androidx.compose.foundation.clickable
-
 
 /**
- * SettingsScreen.kt
- * Permite cambiar el tema, el tamaño de fuente, la tipografía y el nombre del usuario.
+ * SettingsScreen con Theme Toggle funcional
+ * - Cambiar entre Dark/Light Mode
+ * - Cambiar tamaño de fuente
+ * - Cambiar nombre de usuario
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     navController: NavController,
-    storageManager: LocalStorageManager
+    storageManager: LocalStorageManager,
+    isDarkTheme: Boolean = true,
+    onThemeChange: (Boolean) -> Unit = {}
 ) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -34,11 +42,30 @@ fun SettingsScreen(
     var userPrefs by remember { mutableStateOf(UserPreferences()) }
     var loading by remember { mutableStateOf(true) }
 
+    // Estados locales
+    var localIsDarkTheme by remember { mutableStateOf(isDarkTheme) }
+    var fontSize by remember { mutableStateOf(1) }
+    var userName by remember { mutableStateOf("") }
+    var showNameDialog by remember { mutableStateOf(false) }
+
+    // Colores según el tema
+    val primaryColor = if (isDarkTheme) MiraiPink else MiraiTeal
+    val secondaryColor = if (isDarkTheme) MiraiPurple else MiraiGreen
+    val textColor = if (isDarkTheme) Color.White else MiraiTextDark
+    val cardColor = if (isDarkTheme) {
+        Color(0xFF2D1B3D).copy(alpha = 0.6f)
+    } else {
+        Color(0xFFE8F5EE).copy(alpha = 0.8f)
+    }
+
     // Cargar preferencias
     LaunchedEffect(Unit) {
         scope.launch {
             try {
                 userPrefs = storageManager.getPreferences()
+                localIsDarkTheme = userPrefs.isDarkTheme
+                fontSize = userPrefs.fontSize
+                userName = userPrefs.userName
             } catch (e: Exception) {
                 Toast.makeText(ctx, "Error cargando preferencias", Toast.LENGTH_SHORT).show()
             } finally {
@@ -49,127 +76,322 @@ fun SettingsScreen(
 
     if (loading) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
+            CircularProgressIndicator(color = primaryColor)
         }
         return
     }
 
-// Estados con tipo explícito
-    var isDarkTheme by remember { mutableStateOf(false) }
-    var fontSize by remember { mutableStateOf(1) }
-    var userName by remember { mutableStateOf("") }
+    // Fondo con degradado según tema
+    GradientBackground(darkTheme = isDarkTheme) {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Text(
+                            "Settings",
+                            color = textColor,
+                            fontWeight = FontWeight.Bold
+                        )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = { navController.popBackStack() }) {
+                            Icon(
+                                Icons.Default.ArrowBack,
+                                contentDescription = "Back",
+                                tint = primaryColor
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent
+                    )
+                )
+            },
+            containerColor = Color.Transparent
+        ) { innerPadding ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // ========================================
+                // SECCIÓN: APARIENCIA
+                // ========================================
+                Text(
+                    text = "Appearance",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = primaryColor,
+                    fontWeight = FontWeight.Bold
+                )
 
-// Sincroniza los estados con las preferencias cargadas
-    LaunchedEffect(userPrefs) {
-        isDarkTheme = userPrefs.isDarkTheme
-        fontSize = userPrefs.fontSize
-        userName = userPrefs.userName
-    }
+                // Theme Toggle
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = cardColor
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = if (localIsDarkTheme) {
+                                    Icons.Default.DarkMode
+                                } else {
+                                    Icons.Default.LightMode
+                                },
+                                contentDescription = "Theme",
+                                tint = primaryColor
+                            )
+                            Column {
+                                Text(
+                                    text = "Theme",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = textColor,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Text(
+                                    text = if (localIsDarkTheme) "Dark Mode" else "Light Mode",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = textColor.copy(alpha = 0.7f)
+                                )
+                            }
+                        }
 
+                        Switch(
+                            checked = localIsDarkTheme,
+                            onCheckedChange = { newValue ->
+                                localIsDarkTheme = newValue
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Settings") },
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                                // Actualizar inmediatamente
+                                onThemeChange(newValue)
+
+                                // Guardar preferencia
+                                scope.launch {
+                                    try {
+                                        val updated = userPrefs.copy(isDarkTheme = newValue)
+                                        storageManager.savePreferences(updated)
+                                        userPrefs = updated
+                                        Toast.makeText(
+                                            ctx,
+                                            "Theme changed to ${if (newValue) "Dark" else "Light"} Mode",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    } catch (e: Exception) {
+                                        Toast.makeText(
+                                            ctx,
+                                            "Error saving theme",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
+                                }
+                            },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = primaryColor,
+                                checkedTrackColor = primaryColor.copy(alpha = 0.5f),
+                                uncheckedThumbColor = secondaryColor,
+                                uncheckedTrackColor = secondaryColor.copy(alpha = 0.5f)
+                            )
+                        )
+                    }
+                }
+
+                // Font Size
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = cardColor
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Text(
+                            text = "Font Size",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = textColor,
+                            fontWeight = FontWeight.Medium
+                        )
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            // Small
+                            FilterChip(
+                                selected = fontSize == 0,
+                                onClick = {
+                                    fontSize = 0
+                                    scope.launch {
+                                        try {
+                                            val updated = userPrefs.copy(fontSize = 0)
+                                            storageManager.savePreferences(updated)
+                                            userPrefs = updated
+                                            Toast.makeText(ctx, "Font size: Small", Toast.LENGTH_SHORT).show()
+                                        } catch (e: Exception) {
+                                            Toast.makeText(ctx, "Error saving", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                },
+                                label = { Text("Small") },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = primaryColor,
+                                    selectedLabelColor = Color.White
+                                )
+                            )
+
+                            // Normal
+                            FilterChip(
+                                selected = fontSize == 1,
+                                onClick = {
+                                    fontSize = 1
+                                    scope.launch {
+                                        try {
+                                            val updated = userPrefs.copy(fontSize = 1)
+                                            storageManager.savePreferences(updated)
+                                            userPrefs = updated
+                                            Toast.makeText(ctx, "Font size: Normal", Toast.LENGTH_SHORT).show()
+                                        } catch (e: Exception) {
+                                            Toast.makeText(ctx, "Error saving", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                },
+                                label = { Text("Normal") },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = primaryColor,
+                                    selectedLabelColor = Color.White
+                                )
+                            )
+
+                            // Large
+                            FilterChip(
+                                selected = fontSize == 2,
+                                onClick = {
+                                    fontSize = 2
+                                    scope.launch {
+                                        try {
+                                            val updated = userPrefs.copy(fontSize = 2)
+                                            storageManager.savePreferences(updated)
+                                            userPrefs = updated
+                                            Toast.makeText(ctx, "Font size: Large", Toast.LENGTH_SHORT).show()
+                                        } catch (e: Exception) {
+                                            Toast.makeText(ctx, "Error saving", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                },
+                                label = { Text("Large") },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = primaryColor,
+                                    selectedLabelColor = Color.White
+                                )
+                            )
+                        }
+                    }
+                }
+
+                // ========================================
+                // SECCIÓN: ACCOUNT
+                // ========================================
+                Spacer(Modifier.height(8.dp))
+
+                Text(
+                    text = "Account",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = primaryColor,
+                    fontWeight = FontWeight.Bold
+                )
+
+                // User Name
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = cardColor
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = "Username",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = textColor,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = userName.ifBlank { "Not set" },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = textColor.copy(alpha = 0.7f)
+                            )
+                        }
+
+                        TextButton(onClick = { showNameDialog = true }) {
+                            Text("Change", color = primaryColor)
+                        }
+                    }
+                }
+            }
+        }
+
+        // Dialog para cambiar nombre
+        if (showNameDialog) {
+            var newName by remember { mutableStateOf(userName) }
+
+            AlertDialog(
+                onDismissRequest = { showNameDialog = false },
+                title = { Text("Change Username") },
+                text = {
+                    OutlinedTextField(
+                        value = newName,
+                        onValueChange = { newName = it },
+                        label = { Text("New username") },
+                        singleLine = true
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            if (newName.isNotBlank()) {
+                                scope.launch {
+                                    try {
+                                        val updated = userPrefs.copy(userName = newName)
+                                        storageManager.savePreferences(updated)
+                                        userPrefs = updated
+                                        userName = newName
+                                        showNameDialog = false
+                                        Toast.makeText(ctx, "Username updated", Toast.LENGTH_SHORT).show()
+                                    } catch (e: Exception) {
+                                        Toast.makeText(ctx, "Error saving", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            }
+                        }
+                    ) {
+                        Text("Save")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showNameDialog = false }) {
+                        Text("Cancel")
                     }
                 }
             )
         }
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
-        ) {
-            // Apariencia
-            Text("Appearance", style = MaterialTheme.typography.titleMedium)
-
-            // Switch tema oscuro
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("Dark Theme")
-                Switch(
-                    checked = isDarkTheme,
-                    onCheckedChange = { isDarkTheme = it }
-                )
-            }
-
-            Text("Font Size", style = MaterialTheme.typography.titleSmall)
-            val fontSizes = listOf("Small", "Medium", "Large")
-
-            fontSizes.forEachIndexed { index, label ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { fontSize = index },
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    RadioButton(
-                        selected = fontSize == index,
-                        onClick = { fontSize = index }
-                    )
-                    Text(label, modifier = Modifier.padding(start = 8.dp))
-                }
-            }
-
-
-            Divider()
-
-            // Cuenta de usuario
-            Text("Account", style = MaterialTheme.typography.titleMedium)
-            Text("Logged in as: $userName")
-
-            Spacer(Modifier.height(8.dp))
-
-            Button(
-                onClick = {
-                    scope.launch {
-                        val updated = userPrefs.copy(
-                            userName = "",
-                            isDarkTheme = isDarkTheme,
-                            fontSize = fontSize,
-                        )
-                        storageManager.savePreferences(updated)
-                        Toast.makeText(ctx, "User cleared. Returning to Welcome.", Toast.LENGTH_SHORT).show()
-                        navController.navigate("welcome") {
-                            popUpTo(0) { inclusive = true }
-                            launchSingleTop = true
-                        }
-                    }
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-            ) {
-                Text("Change user")
-            }
-
-            Spacer(Modifier.height(8.dp))
-
-            // Guardar cambios
-            Button(
-                onClick = {
-                    scope.launch {
-                        val updated = userPrefs.copy(
-                            userName = userName,
-                            isDarkTheme = isDarkTheme,
-                            fontSize = fontSize,
-                        )
-                        storageManager.savePreferences(updated)
-                        Toast.makeText(ctx, "Preferences saved", Toast.LENGTH_SHORT).show()
-                        navController.popBackStack()
-                    }
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Save")
-            }
-        }
-    }
-}
+    }}
