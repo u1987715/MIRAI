@@ -44,7 +44,8 @@ fun AppNavGraph(
                 onNavigateToCalendar = {
                     navController.navigate("calendar")
                 },
-                onNavigateToSettings = { /* TODO */ }
+                onNavigateToSettings = { navController.navigate("settings") }
+
             )
         }
         // home sin argumentos
@@ -58,7 +59,8 @@ fun AppNavGraph(
                 onNavigateToCalendar = {
                     navController.navigate("calendar")
                 },
-                onNavigateToSettings = { /* TODO */ }
+                onNavigateToSettings = { navController.navigate("settings") }
+
             )
         }
 
@@ -95,13 +97,21 @@ fun AppNavGraph(
                 storageManager = storageManager
             )
         }
-
+        // pantalla calendario
         composable("calendar") {
             CalendarScreen(
                 navController = navController,
                 storageManager = storageManager
             )
         }
+        //pantalla ajustes
+        composable("settings") {
+            SettingsScreen(
+                navController = navController,
+                storageManager = storageManager
+            )
+        }
+
 
 
 
