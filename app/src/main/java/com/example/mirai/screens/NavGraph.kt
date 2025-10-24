@@ -28,17 +28,94 @@ fun AppNavGraph(
             )
         }
 
-        // Pantalla principal (Home)
+        // Pantalla principal (Home) con argumento
+        composable("home/{userName}") { backStackEntry ->
+            val userName = backStackEntry.arguments?.getString("userName") ?: "User"
+            HomeScreen(
+                navController = navController,
+                storageManager = storageManager,
+                userName = userName,
+                onNavigateToDetail = { entryId ->
+                    navController.navigate("entryDetail/$entryId")
+                },
+                onNavigateToCreate = {
+                    navController.navigate("createEditEntry")
+                },
+                onNavigateToCalendar = {
+                    navController.navigate("calendar")
+                },
+                onNavigateToSettings = { navController.navigate("settings") }
+
+            )
+        }
+        // home sin argumentos
         composable("home") {
             HomeScreen(
                 navController = navController,
                 storageManager = storageManager,
-                userName = "User", // de momento usamos uno fijo
-                onNavigateToDetail = { /* TODO */ },
-                onNavigateToCreate = { /* TODO */ },
-                onNavigateToCalendar = { /* TODO */ },
-                onNavigateToSettings = { /* TODO */ }
+                userName = "User",
+                onNavigateToDetail = { id -> navController.navigate("entryDetail/$id") },
+                onNavigateToCreate = { navController.navigate("createEditEntry") },
+                onNavigateToCalendar = {
+                    navController.navigate("calendar")
+                },
+                onNavigateToSettings = { navController.navigate("settings") }
+
             )
         }
+
+        //pantalla de visualización de entrada
+        composable("entryDetail/{entryId}") { backStackEntry ->
+            val entryId = backStackEntry.arguments?.getString("entryId") ?: return@composable
+
+            EntryDetailScreen(
+                navController = navController,
+                storageManager = storageManager,
+                entryId = entryId,
+                onEdit = { id ->
+                    // más adelante navegarás a la pantalla de edición
+                    // navController.navigate("editEntry/$id")
+                },
+                onDeleteSuccess = {
+                    navController.popBackStack("home", inclusive = false)
+                }
+            )
+        }
+        //pantalla de crear o editar una entrada con argumento
+        composable("createEditEntry/{entryId}") { backStackEntry ->
+            val entryId = backStackEntry.arguments?.getString("entryId")
+            CreateEditEntryScreen(
+                navController = navController,
+                storageManager = storageManager,
+                entryId = entryId
+            )
+        }
+        //sin argumento
+        composable("createEditEntry") {
+            CreateEditEntryScreen(
+                navController = navController,
+                storageManager = storageManager
+            )
+        }
+        // pantalla calendario
+        composable("calendar") {
+            CalendarScreen(
+                navController = navController,
+                storageManager = storageManager
+            )
+        }
+        //pantalla ajustes
+        composable("settings") {
+            SettingsScreen(
+                navController = navController,
+                storageManager = storageManager
+            )
+        }
+
+
+
+
+
+
     }
 }

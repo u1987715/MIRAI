@@ -195,7 +195,7 @@ private suspend fun onStart(
         val updated = currentPrefs.copy(userName = name)
         storageManager.savePreferences(updated)
         // Navegar a Home
-        navController.navigate(homeRoute) {
+        navController.navigate("home/${name}") {
             popUpTo(navController.graph.startDestinationId) { inclusive = true }
             launchSingleTop = true
         }
