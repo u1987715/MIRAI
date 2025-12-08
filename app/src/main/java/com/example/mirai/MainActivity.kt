@@ -16,45 +16,37 @@ import com.example.mirai.navigation.NavGraph
 import com.example.mirai.ui.theme.MiraiTheme
 import kotlinx.coroutines.launch
 
-/**
- * MainActivity con soporte para Dark/Light Mode
- *
- * El tema se guarda en preferencias y se aplica en toda la app
- */
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Permitir contenido edge-to-edge
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
         setContent {
-            // Storage manager
-            val storageManager = remember { LocalStorageManager(this) }
+            // SDE Fix: Use applicationContext to avoid Activity context leaks in long-lived objects
+            val storageManager = remember { LocalStorageManager(applicationContext) }
 
-            // Estado del tema (dark/light)
-            var isDarkTheme by remember { mutableStateOf(true) }  // Dark por defecto
+            // State
+            var isDarkTheme by remember { mutableStateOf(true) }
             var fontScale by remember { mutableStateOf(1.0f) }
+
+            // Scope for preference saving
             val scope = rememberCoroutineScope()
 
-            // Cargar preferencias (tema y fuente)
+            // Initial Load
             LaunchedEffect(Unit) {
-                scope.launch {
-                    try {
-                        val prefs = storageManager.getPreferences()
-                        isDarkTheme = prefs.isDarkTheme
-                        fontScale = getFontSizeScale(prefs.fontSize)
-                    } catch (e: Exception) {
-                        // Usar defaults
-                        isDarkTheme = true
-                        fontScale = 1.0f
-                    }
+                try {
+                    val prefs = storageManager.getPreferences()
+                    isDarkTheme = prefs.isDarkTheme
+                    fontScale = getFontSizeScale(prefs.fontSize)
+                } catch (e: Exception) {
+                    isDarkTheme = true
+                    fontScale = 1.0f
                 }
             }
 
             val navController = rememberNavController()
 
-            // Aplicar tema MIRAI
             MiraiTheme(
                 darkTheme = isDarkTheme,
                 fontScale = fontScale
@@ -69,18 +61,16 @@ class MainActivity : ComponentActivity() {
                         startDestination = "welcome",
                         isDarkTheme = isDarkTheme,
                         onThemeChange = { newTheme ->
-                            // Actualizar tema
                             isDarkTheme = newTheme
-
-                            // Guardar preferencia
                             scope.launch {
+                                // Safe async save
                                 try {
                                     val prefs = storageManager.getPreferences()
                                     storageManager.savePreferences(
                                         prefs.copy(isDarkTheme = newTheme)
                                     )
                                 } catch (e: Exception) {
-                                    // Error guardando
+                                    // Log error if needed
                                 }
                             }
                         }
@@ -90,25 +80,3 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
-
-/**
- * ========================================
- * TEMA DINÁMICO! ✨
- * ========================================
- *
- * Ahora MIRAI tiene 2 temas completos:
- *
- * DARK MODE:
- * - Logo: Rosa-Púrpura (MIRAIROSA.png)
- * - Degradado: Negro → Rosa-Púrpura
- * - Botones: Rosa/Púrpura
- * - Cards: Púrpura oscuro
- *
- * LIGHT MODE:
- * - Logo: Verde-Turquesa (MIRAIVERDE.png)
- * - Degradado: Blanco → Verde-Turquesa-Azul
- * - Botones: Verde/Turquesa
- * - Cards: Verde claro
- *
- * El usuario puede cambiar en Settings! 🎨
- */

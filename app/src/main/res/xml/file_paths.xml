@@ -8,6 +8,10 @@
         name="audio" 
         path="audio/" />
 
+    <files-path
+        name="files"
+        path="." />
+
     <cache-path 
         name="cache" 
         path="." />

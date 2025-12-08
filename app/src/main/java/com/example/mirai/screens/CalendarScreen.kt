@@ -4,15 +4,14 @@ import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -32,7 +31,9 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 /**
- * CalendarScreen con soporte para Dark/Light Mode
+ * CalendarScreen fixed:
+ * - Removed Nested Scroll Crash (LazyColumn inside verticalScroll)
+ * - Updated Icons to AutoMirrored
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -51,7 +52,7 @@ fun CalendarScreen(
     val monthFormat = remember { SimpleDateFormat("MMMM yyyy", Locale.getDefault()) }
     val dayFormat = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()) }
 
-    // Colores según el tema
+    // Colors
     val primaryColor = if (isDarkTheme) MiraiPink else MiraiTeal
     val secondaryColor = if (isDarkTheme) MiraiPurple else MiraiGreen
     val textColor = if (isDarkTheme) Color.White else MiraiTextDark
@@ -61,7 +62,6 @@ fun CalendarScreen(
         Color(0xFFE8F5EE).copy(alpha = 0.8f)
     }
 
-    // Fondo con degradado según tema
     GradientBackground(darkTheme = isDarkTheme) {
         Scaffold(
             topBar = {
@@ -76,7 +76,7 @@ fun CalendarScreen(
                     navigationIcon = {
                         IconButton(onClick = { navController.popBackStack() }) {
                             Icon(
-                                Icons.Default.ArrowBack,
+                                Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = "Back",
                                 tint = primaryColor
                             )
@@ -92,12 +92,12 @@ fun CalendarScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
+                    .verticalScroll(rememberScrollState()) // Parent handles scrolling
                     .padding(innerPadding)
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Header del mes con navegación
+                // Header
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -109,7 +109,7 @@ fun CalendarScreen(
                         }
                     }) {
                         Icon(
-                            Icons.Default.KeyboardArrowLeft,
+                            Icons.AutoMirrored.Filled.KeyboardArrowLeft,
                             contentDescription = "Previous month",
                             tint = primaryColor
                         )
@@ -128,14 +128,14 @@ fun CalendarScreen(
                         }
                     }) {
                         Icon(
-                            Icons.Default.KeyboardArrowRight,
+                            Icons.AutoMirrored.Filled.KeyboardArrowRight,
                             contentDescription = "Next month",
                             tint = primaryColor
                         )
                     }
                 }
 
-                // Grid del calendario
+                // Grid
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
@@ -145,7 +145,7 @@ fun CalendarScreen(
                     Column(
                         modifier = Modifier.padding(16.dp)
                     ) {
-                        // Días de la semana
+                        // Days of week
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceEvenly
@@ -164,7 +164,7 @@ fun CalendarScreen(
 
                         Spacer(Modifier.height(8.dp))
 
-                        // Días del mes
+                        // Days of month
                         val cal = currentMonth.clone() as Calendar
                         cal.set(Calendar.DAY_OF_MONTH, 1)
                         val firstDayOfWeek = cal.get(Calendar.DAY_OF_WEEK) - 1
@@ -206,14 +206,8 @@ fun CalendarScreen(
                                                                 dayFormat.format(Date(it.createdAt)) ==
                                                                         dayFormat.format(dayDate)
                                                             }
-                                                        } catch (e: Exception) {
-                                                            Toast
-                                                                .makeText(
-                                                                    ctx,
-                                                                    "Error loading entries",
-                                                                    Toast.LENGTH_SHORT
-                                                                )
-                                                                .show()
+                                                        } catch (_: Exception) {
+                                                            Toast.makeText(ctx, "Error loading entries", Toast.LENGTH_SHORT).show()
                                                         }
                                                     }
                                                 },
@@ -234,7 +228,7 @@ fun CalendarScreen(
                     }
                 }
 
-                // Lista de entradas del día seleccionado
+                // List of entries
                 if (selectedDate != null) {
                     Spacer(Modifier.height(8.dp))
 
@@ -252,10 +246,12 @@ fun CalendarScreen(
                             color = textColor.copy(alpha = 0.7f)
                         )
                     } else {
-                        LazyColumn(
+                        // FIX: Replaced LazyColumn with standard Column loop
+                        // This prevents the "Infinite height" crash inside verticalScroll
+                        Column(
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            items(entriesForSelectedDay) { entry ->
+                            entriesForSelectedDay.forEach { entry ->
                                 Card(
                                     modifier = Modifier
                                         .fillMaxWidth()
